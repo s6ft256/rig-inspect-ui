@@ -3,16 +3,17 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { Check, X } from "lucide-react";
 
 type EquipmentType = "general" | "crane";
+type CheckStatus = "unchecked" | "passed" | "failed";
 
 interface ChecklistItem {
   id: string;
   text: string;
-  checked: boolean;
+  status: CheckStatus;
 }
 
 interface ChecklistCategory {
@@ -24,52 +25,52 @@ const generalEquipmentChecklist: ChecklistCategory[] = [
   {
     title: "PRE-OPERATIONAL DOCUMENTATION",
     items: [
-      { id: "docs", text: "Documents & Logs (in order)", checked: false }
+      { id: "docs", text: "Documents & Logs (in order)", status: "unchecked" }
     ]
   },
   {
     title: "ENGINE & POWER UNIT",
     items: [
-      { id: "engine", text: "Engine Condition (no leaks, noises)", checked: false },
-      { id: "fluids", text: "Fluid Levels (Oil, Coolant, Hydraulic)", checked: false },
-      { id: "battery", text: "Battery Connection & Condition", checked: false },
-      { id: "air-filter", text: "Air Filter Condition", checked: false }
+      { id: "engine", text: "Engine Condition (no leaks, noises)", status: "unchecked" },
+      { id: "fluids", text: "Fluid Levels (Oil, Coolant, Hydraulic)", status: "unchecked" },
+      { id: "battery", text: "Battery Connection & Condition", status: "unchecked" },
+      { id: "air-filter", text: "Air Filter Condition", status: "unchecked" }
     ]
   },
   {
     title: "OPERATOR STATION",
     items: [
-      { id: "cabin", text: "Operator Cabin (clean, glass intact)", checked: false },
-      { id: "seat", text: "Seat & Seatbelt Function", checked: false },
-      { id: "controls", text: "Operator Controls Functional", checked: false },
-      { id: "lights", text: "Lights, Gauges & Signals Operational", checked: false },
-      { id: "horn", text: "Horn & Alarms Functional", checked: false }
+      { id: "cabin", text: "Operator Cabin (clean, glass intact)", status: "unchecked" },
+      { id: "seat", text: "Seat & Seatbelt Function", status: "unchecked" },
+      { id: "controls", text: "Operator Controls Functional", status: "unchecked" },
+      { id: "lights", text: "Lights, Gauges & Signals Operational", status: "unchecked" },
+      { id: "horn", text: "Horn & Alarms Functional", status: "unchecked" }
     ]
   },
   {
     title: "CHASSIS & UNDERCARRIAGE",
     items: [
-      { id: "tracks", text: "Roller & Track Condition (if applicable)", checked: false },
-      { id: "tires", text: "Tire Pressure & Condition (including wear)", checked: false },
-      { id: "brakes", text: "Brakes & Parking Brake", checked: false },
-      { id: "noises", text: "No Abnormal Noises or Vibrations", checked: false }
+      { id: "tracks", text: "Roller & Track Condition (if applicable)", status: "unchecked" },
+      { id: "tires", text: "Tire Pressure & Condition (including wear)", status: "unchecked" },
+      { id: "brakes", text: "Brakes & Parking Brake", status: "unchecked" },
+      { id: "noises", text: "No Abnormal Noises or Vibrations", status: "unchecked" }
     ]
   },
   {
     title: "ATTACHMENTS & HYDRAULICS",
     items: [
-      { id: "bucket", text: "Bucket Condition (if equipped, for cracks/wear)", checked: false },
-      { id: "hydraulic", text: "Hydraulic System (no leaks, hoses intact)", checked: false },
-      { id: "guards", text: "Safety Guards & Shields in Place", checked: false },
-      { id: "pins", text: "Attachment Pins & Locks Secure", checked: false }
+      { id: "bucket", text: "Bucket Condition (if equipped, for cracks/wear)", status: "unchecked" },
+      { id: "hydraulic", text: "Hydraulic System (no leaks, hoses intact)", status: "unchecked" },
+      { id: "guards", text: "Safety Guards & Shields in Place", status: "unchecked" },
+      { id: "pins", text: "Attachment Pins & Locks Secure", status: "unchecked" }
     ]
   },
   {
     title: "FINAL CHECKS",
     items: [
-      { id: "clean", text: "Cleanliness & Free of Debris", checked: false },
-      { id: "extinguisher", text: "Fire Extinguisher Present & Charged", checked: false },
-      { id: "first-aid", text: "First Aid Kit Present", checked: false }
+      { id: "clean", text: "Cleanliness & Free of Debris", status: "unchecked" },
+      { id: "extinguisher", text: "Fire Extinguisher Present & Charged", status: "unchecked" },
+      { id: "first-aid", text: "First Aid Kit Present", status: "unchecked" }
     ]
   }
 ];
@@ -78,44 +79,74 @@ const craneChecklist: ChecklistCategory[] = [
   {
     title: "HOIST & HOOK SYSTEMS",
     items: [
-      { id: "main-hoist", text: "Main Hoist Line & Hook (for damage)", checked: false },
-      { id: "aux-hoist", text: "Auxiliary Hoist (Swinger Hook)", checked: false }
+      { id: "main-hoist", text: "Main Hoist Line & Hook (for damage)", status: "unchecked" },
+      { id: "aux-hoist", text: "Auxiliary Hoist (Swinger Hook)", status: "unchecked" }
     ]
   },
   {
     title: "BOOM & STRUCTURAL",
     items: [
-      { id: "boom-jib", text: "Boom & Jib (for cracks, deformities)", checked: false },
-      { id: "lattice", text: "Lattice Sections & Pins", checked: false },
-      { id: "slew-ring", text: "Slew Ring & Gear Condition", checked: false }
+      { id: "boom-jib", text: "Boom & Jib (for cracks, deformities)", status: "unchecked" },
+      { id: "lattice", text: "Lattice Sections & Pins", status: "unchecked" },
+      { id: "slew-ring", text: "Slew Ring & Gear Condition", status: "unchecked" }
     ]
   },
   {
     title: "STABILITY & SUPPORT",
     items: [
-      { id: "outriggers", text: "Outriggers & Pads (fully extended/retracted)", checked: false },
-      { id: "levelness", text: "Crane Levelness Check", checked: false }
+      { id: "outriggers", text: "Outriggers & Pads (fully extended/retracted)", status: "unchecked" },
+      { id: "levelness", text: "Crane Levelness Check", status: "unchecked" }
     ]
   },
   {
     title: "SAFETY SYSTEMS",
     items: [
-      { id: "lmi", text: "Load Moment Indicator (LMI) Calibration", checked: false },
-      { id: "anti-two-block", text: "Anti-Two-Block System Test", checked: false }
+      { id: "lmi", text: "Load Moment Indicator (LMI) Calibration", status: "unchecked" },
+      { id: "anti-two-block", text: "Anti-Two-Block System Test", status: "unchecked" }
     ]
   },
   {
     title: "WIRE ROPE & RIGGING",
     items: [
-      { id: "wire-rope", text: "Wire Rope (for birdcaging, kinks)", checked: false },
-      { id: "rigging", text: "Rigging Equipment Inspection (separate log)", checked: false }
+      { id: "wire-rope", text: "Wire Rope (for birdcaging, kinks)", status: "unchecked" },
+      { id: "rigging", text: "Rigging Equipment Inspection (separate log)", status: "unchecked" }
     ]
   }
 ];
 
+interface CheckboxButtonProps {
+  status: CheckStatus;
+  onClick: () => void;
+  type: "pass" | "fail";
+}
+
+function CheckboxButton({ status, onClick, type }: CheckboxButtonProps) {
+  const isActive = (type === "pass" && status === "passed") || (type === "fail" && status === "failed");
+  
+  return (
+    <button
+      onClick={onClick}
+      className={`w-8 h-8 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+        isActive
+          ? type === "pass"
+            ? "bg-industrial-green border-industrial-green text-white shadow-sm"
+            : "bg-destructive border-destructive text-white shadow-sm"
+          : "border-border hover:border-industrial-blue bg-background"
+      }`}
+    >
+      {isActive && (
+        type === "pass" ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />
+      )}
+    </button>
+  );
+}
+
 export default function EquipmentChecklist() {
   const [activeTab, setActiveTab] = useState<EquipmentType>("general");
   const [equipmentNumber, setEquipmentNumber] = useState("");
+  const [operatorName, setOperatorName] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [equipmentType, setEquipmentType] = useState("");
   const [date, setDate] = useState("");
   const [generalChecklist, setGeneralChecklist] = useState(generalEquipmentChecklist);
   const [craneChecklistState, setCraneChecklistState] = useState(craneChecklist);
@@ -124,37 +155,39 @@ export default function EquipmentChecklist() {
   const currentChecklist = activeTab === "general" ? generalChecklist : craneChecklistState;
   const setCurrentChecklist = activeTab === "general" ? setGeneralChecklist : setCraneChecklistState;
 
-  const handleCheckboxChange = (categoryIndex: number, itemIndex: number) => {
+  const handleStatusChange = (categoryIndex: number, itemIndex: number, newStatus: CheckStatus) => {
     const newChecklist = [...currentChecklist];
-    newChecklist[categoryIndex].items[itemIndex].checked = 
-      !newChecklist[categoryIndex].items[itemIndex].checked;
+    newChecklist[categoryIndex].items[itemIndex].status = newStatus;
     setCurrentChecklist(newChecklist);
   };
 
   const handleSubmit = () => {
-    if (!equipmentNumber || !date) {
+    if (!equipmentNumber || !operatorName || !licenseNumber || !equipmentType || !date) {
       toast({
         title: "Missing Information",
-        description: "Please fill in equipment number and date",
+        description: "Please fill in all required fields",
         variant: "destructive"
       });
       return;
     }
 
     const totalItems = currentChecklist.reduce((acc, category) => acc + category.items.length, 0);
-    const checkedItems = currentChecklist.reduce((acc, category) => 
-      acc + category.items.filter(item => item.checked).length, 0
+    const passedItems = currentChecklist.reduce((acc, category) => 
+      acc + category.items.filter(item => item.status === "passed").length, 0
+    );
+    const failedItems = currentChecklist.reduce((acc, category) => 
+      acc + category.items.filter(item => item.status === "failed").length, 0
     );
 
     toast({
       title: "Report Submitted",
-      description: `Inspection complete: ${checkedItems}/${totalItems} items checked`,
+      description: `Inspection complete: ${passedItems} passed, ${failedItems} failed, ${totalItems - passedItems - failedItems} unchecked`,
     });
   };
 
   return (
     <div className="min-h-screen bg-industrial-charcoal p-4 md:p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-3xl md:text-4xl font-bold text-industrial-white tracking-wide">
@@ -190,7 +223,43 @@ export default function EquipmentChecklist() {
         <Card className="bg-industrial-card border-border shadow-elevated">
           <div className="p-6">
             {/* Input Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+              <div className="space-y-2">
+                <Label htmlFor="operator-name" className="text-industrial-white font-medium">
+                  Operator Name:
+                </Label>
+                <Input
+                  id="operator-name"
+                  value={operatorName}
+                  onChange={(e) => setOperatorName(e.target.value)}
+                  className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
+                  placeholder="Enter operator name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="license-number" className="text-industrial-white font-medium">
+                  License Number:
+                </Label>
+                <Input
+                  id="license-number"
+                  value={licenseNumber}
+                  onChange={(e) => setLicenseNumber(e.target.value)}
+                  className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
+                  placeholder="Enter license number"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="equipment-type" className="text-industrial-white font-medium">
+                  Equipment Type:
+                </Label>
+                <Input
+                  id="equipment-type"
+                  value={equipmentType}
+                  onChange={(e) => setEquipmentType(e.target.value)}
+                  className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
+                  placeholder="Enter equipment type"
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="equipment-number" className="text-industrial-white font-medium">
                   Equipment Number:
@@ -219,9 +288,25 @@ export default function EquipmentChecklist() {
 
             {/* Inspection Checklist */}
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-industrial-white mb-4">
-                Inspection Checklist
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-industrial-white">
+                  Inspection Checklist
+                </h2>
+                <div className="flex items-center gap-6 text-sm text-industrial-grey">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded border-2 border-industrial-green bg-industrial-green flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                    <span>Pass</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded border-2 border-destructive bg-destructive flex items-center justify-center">
+                      <X className="w-3 h-3 text-white" />
+                    </div>
+                    <span>Fail</span>
+                  </div>
+                </div>
+              </div>
               
               <ScrollArea className="h-96 pr-4">
                 <div className="space-y-6">
@@ -232,15 +317,26 @@ export default function EquipmentChecklist() {
                       </h3>
                       <div className="space-y-2">
                         {category.items.map((item, itemIndex) => (
-                          <div key={item.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
+                          <div key={item.id} className="flex items-center justify-between py-3 px-4 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
                             <span className="text-industrial-grey flex-1">
                               {item.text}
                             </span>
-                            <Checkbox
-                              checked={item.checked}
-                              onCheckedChange={() => handleCheckboxChange(categoryIndex, itemIndex)}
-                              className="ml-4 data-[state=checked]:bg-industrial-blue data-[state=checked]:border-industrial-blue"
-                            />
+                            <div className="flex items-center gap-3 ml-4">
+                              <CheckboxButton
+                                status={item.status}
+                                onClick={() => handleStatusChange(categoryIndex, itemIndex, 
+                                  item.status === "passed" ? "unchecked" : "passed"
+                                )}
+                                type="pass"
+                              />
+                              <CheckboxButton
+                                status={item.status}
+                                onClick={() => handleStatusChange(categoryIndex, itemIndex, 
+                                  item.status === "failed" ? "unchecked" : "failed"
+                                )}
+                                type="fail"
+                              />
+                            </div>
                           </div>
                         ))}
                       </div>
