@@ -52,6 +52,14 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				industrial: {
+					charcoal: 'hsl(var(--industrial-charcoal))',
+					grey: 'hsl(var(--industrial-grey))',
+					white: 'hsl(var(--industrial-white))',
+					blue: 'hsl(var(--industrial-blue))',
+					green: 'hsl(var(--industrial-green))',
+					card: 'hsl(var(--industrial-card))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -89,6 +97,11 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out'
+			},
+			boxShadow: {
+				'soft': 'var(--shadow-soft)',
+				'elevated': 'var(--shadow-elevated)',
+				'glow-blue': 'var(--glow-blue)'
 			}
 		}
 	},
