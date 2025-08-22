@@ -161,6 +161,20 @@ export default function EquipmentChecklist() {
     setCurrentChecklist(newChecklist);
   };
 
+  const calculateScore = () => {
+    const totalItems = currentChecklist.reduce((acc, category) => acc + category.items.length, 0);
+    const passedItems = currentChecklist.reduce((acc, category) => 
+      acc + category.items.filter(item => item.status === "passed").length, 0
+    );
+    const failedItems = currentChecklist.reduce((acc, category) => 
+      acc + category.items.filter(item => item.status === "failed").length, 0
+    );
+    const checkedItems = passedItems + failedItems;
+    const score = checkedItems > 0 ? Math.round((passedItems / checkedItems) * 100) : 0;
+    
+    return { totalItems, passedItems, failedItems, checkedItems, score };
+  };
+
   const handleSubmit = () => {
     if (!equipmentNumber || !operatorName || !licenseNumber || !equipmentType || !date) {
       toast({
@@ -171,17 +185,11 @@ export default function EquipmentChecklist() {
       return;
     }
 
-    const totalItems = currentChecklist.reduce((acc, category) => acc + category.items.length, 0);
-    const passedItems = currentChecklist.reduce((acc, category) => 
-      acc + category.items.filter(item => item.status === "passed").length, 0
-    );
-    const failedItems = currentChecklist.reduce((acc, category) => 
-      acc + category.items.filter(item => item.status === "failed").length, 0
-    );
+    const { passedItems, failedItems, totalItems, score } = calculateScore();
 
     toast({
       title: "Report Submitted",
-      description: `Inspection complete: ${passedItems} passed, ${failedItems} failed, ${totalItems - passedItems - failedItems} unchecked`,
+      description: `Inspection complete: ${passedItems} passed, ${failedItems} failed, ${totalItems - passedItems - failedItems} unchecked. Score: ${score}%`,
     });
   };
 
@@ -283,6 +291,28 @@ export default function EquipmentChecklist() {
                   onChange={(e) => setDate(e.target.value)}
                   className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
                 />
+              </div>
+            </div>
+
+            {/* Equipment Score Dashboard */}
+            <div className="mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/20 rounded-lg border border-border">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-industrial-blue">{calculateScore().score}%</div>
+                  <div className="text-sm text-industrial-grey">Equipment Score</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-semibold text-industrial-green">{calculateScore().passedItems}</div>
+                  <div className="text-sm text-industrial-grey">Passed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-semibold text-destructive">{calculateScore().failedItems}</div>
+                  <div className="text-sm text-industrial-grey">Failed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-semibold text-industrial-white">{calculateScore().totalItems - calculateScore().checkedItems}</div>
+                  <div className="text-sm text-industrial-grey">Remaining</div>
+                </div>
               </div>
             </div>
 
