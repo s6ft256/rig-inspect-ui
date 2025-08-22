@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X } from "lucide-react";
+import { Check, X, Calendar, User, Settings } from "lucide-react";
 
 type EquipmentType = "general" | "crane";
 type CheckStatus = "unchecked" | "passed" | "failed";
@@ -19,6 +20,22 @@ interface ChecklistItem {
 interface ChecklistCategory {
   title: string;
   items: ChecklistItem[];
+}
+
+interface SubmittedChecklist {
+  id: string;
+  operatorName: string;
+  licenseNumber: string;
+  equipmentType: string;
+  equipmentNumber: string;
+  date: string;
+  checklistType: "general" | "crane";
+  score: number;
+  passedItems: number;
+  failedItems: number;
+  totalItems: number;
+  categories: ChecklistCategory[];
+  submittedAt: string;
 }
 
 const generalEquipmentChecklist: ChecklistCategory[] = [
@@ -150,6 +167,7 @@ export default function EquipmentChecklist() {
   const [date, setDate] = useState("");
   const [generalChecklist, setGeneralChecklist] = useState(generalEquipmentChecklist);
   const [craneChecklistState, setCraneChecklistState] = useState(craneChecklist);
+  const [submittedChecklists, setSubmittedChecklists] = useState<SubmittedChecklist[]>([]);
   const { toast } = useToast();
 
   const currentChecklist = activeTab === "general" ? generalChecklist : craneChecklistState;
@@ -187,6 +205,41 @@ export default function EquipmentChecklist() {
 
     const { passedItems, failedItems, totalItems, score } = calculateScore();
 
+    // Create submitted checklist record
+    const submittedChecklist: SubmittedChecklist = {
+      id: Date.now().toString(),
+      operatorName,
+      licenseNumber,
+      equipmentType,
+      equipmentNumber,
+      date,
+      checklistType: activeTab,
+      score,
+      passedItems,
+      failedItems,
+      totalItems,
+      categories: currentChecklist,
+      submittedAt: new Date().toISOString()
+    };
+
+    // Add to submitted checklists
+    setSubmittedChecklists(prev => [submittedChecklist, ...prev]);
+
+    // Reset form
+    setEquipmentNumber("");
+    setOperatorName("");
+    setLicenseNumber("");
+    setEquipmentType("");
+    setDate("");
+    setGeneralChecklist(generalEquipmentChecklist.map(category => ({
+      ...category,
+      items: category.items.map(item => ({ ...item, status: "unchecked" as CheckStatus }))
+    })));
+    setCraneChecklistState(craneChecklist.map(category => ({
+      ...category,
+      items: category.items.map(item => ({ ...item, status: "unchecked" as CheckStatus }))
+    })));
+
     toast({
       title: "Report Submitted",
       description: `Inspection complete: ${passedItems} passed, ${failedItems} failed, ${totalItems - passedItems - failedItems} unchecked. Score: ${score}%`,
@@ -203,192 +256,315 @@ export default function EquipmentChecklist() {
           </h1>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex mb-6 bg-secondary rounded-lg p-1 shadow-soft">
-          <button
-            onClick={() => setActiveTab("general")}
-            className={`flex-1 py-3 px-6 rounded-md font-medium transition-all duration-200 ${
-              activeTab === "general"
-                ? "bg-industrial-blue text-industrial-white shadow-glow-blue"
-                : "text-industrial-grey hover:text-industrial-white"
-            }`}
-          >
-            General Heavy Equipment
-          </button>
-          <button
-            onClick={() => setActiveTab("crane")}
-            className={`flex-1 py-3 px-6 rounded-md font-medium transition-all duration-200 ${
-              activeTab === "crane"
-                ? "bg-industrial-blue text-industrial-white shadow-glow-blue"
-                : "text-industrial-grey hover:text-industrial-white"
-            }`}
-          >
-            Mobile Crane
-          </button>
-        </div>
+        <Tabs defaultValue="new-inspection" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsTrigger value="new-inspection" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              New Inspection
+            </TabsTrigger>
+            <TabsTrigger value="general" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              General Equipment
+            </TabsTrigger>
+            <TabsTrigger value="crane" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              Mobile Crane
+            </TabsTrigger>
+            <TabsTrigger value="submitted" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Submitted ({submittedChecklists.length})
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Main Form Card */}
-        <Card className="bg-industrial-card border-border shadow-elevated">
-          <div className="p-6">
-            {/* Input Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-              <div className="space-y-2">
-                <Label htmlFor="operator-name" className="text-industrial-white font-medium">
-                  Operator Name:
-                </Label>
-                <Input
-                  id="operator-name"
-                  value={operatorName}
-                  onChange={(e) => setOperatorName(e.target.value)}
-                  className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
-                  placeholder="Enter operator name"
-                />
+          <TabsContent value="new-inspection">
+            <Card className="bg-industrial-card border-border shadow-elevated">
+              <div className="p-6 text-center">
+                <h2 className="text-xl font-semibold text-industrial-white mb-4">Select Equipment Type</h2>
+                <p className="text-industrial-grey mb-6">Choose the type of equipment you want to inspect</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button
+                    onClick={() => setActiveTab("general")}
+                    className="h-24 text-lg bg-industrial-blue hover:bg-industrial-blue/90"
+                  >
+                    General Heavy Equipment
+                  </Button>
+                  <Button
+                    onClick={() => setActiveTab("crane")}
+                    className="h-24 text-lg bg-industrial-blue hover:bg-industrial-blue/90"
+                  >
+                    Mobile Crane
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="license-number" className="text-industrial-white font-medium">
-                  License Number:
-                </Label>
-                <Input
-                  id="license-number"
-                  value={licenseNumber}
-                  onChange={(e) => setLicenseNumber(e.target.value)}
-                  className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
-                  placeholder="Enter license number"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="equipment-type" className="text-industrial-white font-medium">
-                  Equipment Type:
-                </Label>
-                <Input
-                  id="equipment-type"
-                  value={equipmentType}
-                  onChange={(e) => setEquipmentType(e.target.value)}
-                  className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
-                  placeholder="Enter equipment type"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="equipment-number" className="text-industrial-white font-medium">
-                  Equipment Number:
-                </Label>
-                <Input
-                  id="equipment-number"
-                  value={equipmentNumber}
-                  onChange={(e) => setEquipmentNumber(e.target.value)}
-                  className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
-                  placeholder="Enter equipment number"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="date" className="text-industrial-white font-medium">
-                  Date:
-                </Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
-                />
-              </div>
-            </div>
+            </Card>
+          </TabsContent>
 
-            {/* Equipment Score Dashboard */}
-            <div className="mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/20 rounded-lg border border-border">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-industrial-blue">{calculateScore().score}%</div>
-                  <div className="text-sm text-industrial-grey">Equipment Score</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-semibold text-industrial-green">{calculateScore().passedItems}</div>
-                  <div className="text-sm text-industrial-grey">Passed</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-semibold text-destructive">{calculateScore().failedItems}</div>
-                  <div className="text-sm text-industrial-grey">Failed</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-semibold text-industrial-white">{calculateScore().totalItems - calculateScore().checkedItems}</div>
-                  <div className="text-sm text-industrial-grey">Remaining</div>
-                </div>
-              </div>
-            </div>
+          <TabsContent value="general">
+            {renderInspectionForm("general")}
+          </TabsContent>
 
-            {/* Inspection Checklist */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-industrial-white">
-                  Inspection Checklist
-                </h2>
-                <div className="flex items-center gap-6 text-sm text-industrial-grey">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded border-2 border-industrial-green bg-industrial-green flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" />
-                    </div>
-                    <span>Pass</span>
+          <TabsContent value="crane">
+            {renderInspectionForm("crane")}
+          </TabsContent>
+
+          <TabsContent value="submitted">
+            <Card className="bg-industrial-card border-border shadow-elevated">
+              <div className="p-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <Calendar className="w-6 h-6 text-industrial-blue" />
+                  <h2 className="text-xl font-semibold text-industrial-white">
+                    Submitted Checklists ({submittedChecklists.length})
+                  </h2>
+                </div>
+                
+                {submittedChecklists.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Calendar className="w-16 h-16 text-industrial-grey mx-auto mb-4 opacity-50" />
+                    <p className="text-industrial-grey text-lg">No submitted checklists yet</p>
+                    <p className="text-industrial-grey/70 text-sm mt-2">Complete an inspection to see it here</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded border-2 border-destructive bg-destructive flex items-center justify-center">
-                      <X className="w-3 h-3 text-white" />
-                    </div>
-                    <span>Fail</span>
-                  </div>
-                </div>
-              </div>
-              
-              <ScrollArea className="h-96 pr-4">
-                <div className="space-y-6">
-                  {currentChecklist.map((category, categoryIndex) => (
-                    <div key={category.title} className="space-y-3">
-                      <h3 className="text-industrial-white font-semibold text-sm uppercase tracking-wider">
-                        {category.title}
-                      </h3>
-                      <div className="space-y-2">
-                        {category.items.map((item, itemIndex) => (
-                          <div key={item.id} className="flex items-center justify-between py-3 px-4 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
-                            <span className="text-industrial-grey flex-1">
-                              {item.text}
-                            </span>
-                            <div className="flex items-center gap-3 ml-4">
-                              <CheckboxButton
-                                status={item.status}
-                                onClick={() => handleStatusChange(categoryIndex, itemIndex, 
-                                  item.status === "passed" ? "unchecked" : "passed"
-                                )}
-                                type="pass"
-                              />
-                              <CheckboxButton
-                                status={item.status}
-                                onClick={() => handleStatusChange(categoryIndex, itemIndex, 
-                                  item.status === "failed" ? "unchecked" : "failed"
-                                )}
-                                type="fail"
-                              />
+                ) : (
+                  <ScrollArea className="h-96">
+                    <div className="space-y-4">
+                      {submittedChecklists.map((checklist) => (
+                        <div key={checklist.id} className="p-4 bg-muted/30 rounded-lg border border-border">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <User className="w-4 h-4 text-industrial-blue" />
+                                <span className="font-medium text-industrial-white">{checklist.operatorName}</span>
+                                <span className="text-industrial-grey">({checklist.licenseNumber})</span>
+                              </div>
+                              <div className="text-sm text-industrial-grey space-y-1">
+                                <div>{checklist.equipmentType} - #{checklist.equipmentNumber}</div>
+                                <div className="flex items-center gap-2">
+                                  <span>Date: {checklist.date}</span>
+                                  <span>•</span>
+                                  <span>Type: {checklist.checklistType === "general" ? "General Equipment" : "Mobile Crane"}</span>
+                                </div>
+                                <div>Submitted: {new Date(checklist.submittedAt).toLocaleDateString()} at {new Date(checklist.submittedAt).toLocaleTimeString()}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="text-center">
+                                <div className={`text-2xl font-bold ${checklist.score >= 80 ? 'text-industrial-green' : checklist.score >= 60 ? 'text-yellow-500' : 'text-destructive'}`}>
+                                  {checklist.score}%
+                                </div>
+                                <div className="text-xs text-industrial-grey">Score</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-lg font-semibold text-industrial-green">{checklist.passedItems}</div>
+                                <div className="text-xs text-industrial-grey">Passed</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-lg font-semibold text-destructive">{checklist.failedItems}</div>
+                                <div className="text-xs text-industrial-grey">Failed</div>
+                              </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex justify-center">
-              <Button
-                onClick={handleSubmit}
-                className="bg-industrial-green hover:bg-industrial-green/90 text-white font-semibold py-3 px-8 text-lg shadow-elevated"
-                size="lg"
-              >
-                SUBMIT REPORT
-              </Button>
-            </div>
-          </div>
-        </Card>
+                  </ScrollArea>
+                )}
+              </div>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
+
+  function renderInspectionForm(type: EquipmentType) {
+    const checklist = type === "general" ? generalChecklist : craneChecklistState;
+    const setChecklist = type === "general" ? setGeneralChecklist : setCraneChecklistState;
+    
+    const handleStatusChange = (categoryIndex: number, itemIndex: number, newStatus: CheckStatus) => {
+      const newChecklist = [...checklist];
+      newChecklist[categoryIndex].items[itemIndex].status = newStatus;
+      setChecklist(newChecklist);
+    };
+
+    const calculateScore = () => {
+      const totalItems = checklist.reduce((acc, category) => acc + category.items.length, 0);
+      const passedItems = checklist.reduce((acc, category) => 
+        acc + category.items.filter(item => item.status === "passed").length, 0
+      );
+      const failedItems = checklist.reduce((acc, category) => 
+        acc + category.items.filter(item => item.status === "failed").length, 0
+      );
+      const checkedItems = passedItems + failedItems;
+      const score = checkedItems > 0 ? Math.round((passedItems / checkedItems) * 100) : 0;
+      
+      return { totalItems, passedItems, failedItems, checkedItems, score };
+    };
+
+    return (
+
+      <Card className="bg-industrial-card border-border shadow-elevated">
+        <div className="p-6">
+          {/* Input Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+            <div className="space-y-2">
+              <Label htmlFor="operator-name" className="text-industrial-white font-medium">
+                Operator Name:
+              </Label>
+              <Input
+                id="operator-name"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
+                placeholder="Enter operator name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="license-number" className="text-industrial-white font-medium">
+                License Number:
+              </Label>
+              <Input
+                id="license-number"
+                value={licenseNumber}
+                onChange={(e) => setLicenseNumber(e.target.value)}
+                className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
+                placeholder="Enter license number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="equipment-type" className="text-industrial-white font-medium">
+                Equipment Type:
+              </Label>
+              <Input
+                id="equipment-type"
+                value={equipmentType}
+                onChange={(e) => setEquipmentType(e.target.value)}
+                className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
+                placeholder="Enter equipment type"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="equipment-number" className="text-industrial-white font-medium">
+                Equipment Number:
+              </Label>
+              <Input
+                id="equipment-number"
+                value={equipmentNumber}
+                onChange={(e) => setEquipmentNumber(e.target.value)}
+                className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
+                placeholder="Enter equipment number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="date" className="text-industrial-white font-medium">
+                Date:
+              </Label>
+              <Input
+                id="date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
+              />
+            </div>
+          </div>
+
+          {/* Equipment Score Dashboard */}
+          <div className="mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/20 rounded-lg border border-border">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-industrial-blue">{calculateScore().score}%</div>
+                <div className="text-sm text-industrial-grey">Equipment Score</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-semibold text-industrial-green">{calculateScore().passedItems}</div>
+                <div className="text-sm text-industrial-grey">Passed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-semibold text-destructive">{calculateScore().failedItems}</div>
+                <div className="text-sm text-industrial-grey">Failed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-semibold text-industrial-white">{calculateScore().totalItems - calculateScore().checkedItems}</div>
+                <div className="text-sm text-industrial-grey">Remaining</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Inspection Checklist */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-industrial-white">
+                Inspection Checklist - {type === "general" ? "General Equipment" : "Mobile Crane"}
+              </h2>
+              <div className="flex items-center gap-6 text-sm text-industrial-grey">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded border-2 border-industrial-green bg-industrial-green flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                  <span>Pass</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded border-2 border-destructive bg-destructive flex items-center justify-center">
+                    <X className="w-3 h-3 text-white" />
+                  </div>
+                  <span>Fail</span>
+                </div>
+              </div>
+            </div>
+            
+            <ScrollArea className="h-96 pr-4">
+              <div className="space-y-6">
+                {checklist.map((category, categoryIndex) => (
+                  <div key={category.title} className="space-y-3">
+                    <h3 className="text-industrial-white font-semibold text-sm uppercase tracking-wider">
+                      {category.title}
+                    </h3>
+                    <div className="space-y-2">
+                      {category.items.map((item, itemIndex) => (
+                        <div key={item.id} className="flex items-center justify-between py-3 px-4 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
+                          <span className="text-industrial-grey flex-1">
+                            {item.text}
+                          </span>
+                          <div className="flex items-center gap-3 ml-4">
+                            <CheckboxButton
+                              status={item.status}
+                              onClick={() => handleStatusChange(categoryIndex, itemIndex, 
+                                item.status === "passed" ? "unchecked" : "passed"
+                              )}
+                              type="pass"
+                            />
+                            <CheckboxButton
+                              status={item.status}
+                              onClick={() => handleStatusChange(categoryIndex, itemIndex, 
+                                item.status === "failed" ? "unchecked" : "failed"
+                              )}
+                              type="fail"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex justify-center">
+            <Button
+              onClick={() => {
+                // Set the activeTab to match the current form type
+                setActiveTab(type);
+                handleSubmit();
+              }}
+              className="bg-industrial-green hover:bg-industrial-green/90 text-white font-semibold py-3 px-8 text-lg shadow-elevated"
+              size="lg"
+            >
+              SUBMIT REPORT
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 }
