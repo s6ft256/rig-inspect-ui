@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Check, X, Calendar, User, Settings } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 type EquipmentType = "general" | "crane";
 type CheckStatus = "unchecked" | "passed" | "failed";
@@ -168,7 +169,88 @@ export default function EquipmentChecklist() {
   const [generalChecklist, setGeneralChecklist] = useState(generalEquipmentChecklist);
   const [craneChecklistState, setCraneChecklistState] = useState(craneChecklist);
   const [submittedChecklists, setSubmittedChecklists] = useState<SubmittedChecklist[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Load submitted checklists from Supabase on component mount
+  useEffect(() => {
+    loadSubmittedChecklists();
+  }, []);
+
+  const loadSubmittedChecklists = async () => {
+    try {
+      const { data: checklists, error: checklistsError } = await supabase
+        .from('checklists')
+        .select(`
+          *,
+          checklist_items (
+            category_title,
+            item_id,
+            item_text,
+            status
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (checklistsError) {
+        console.error('Error loading checklists:', checklistsError);
+        toast({
+          title: "Error",
+          description: "Failed to load submitted checklists",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (checklists) {
+        const formattedChecklists: SubmittedChecklist[] = checklists.map(checklist => {
+          // Group items by category
+          const categoriesMap = new Map<string, ChecklistItem[]>();
+          
+          checklist.checklist_items.forEach((item: any) => {
+            if (!categoriesMap.has(item.category_title)) {
+              categoriesMap.set(item.category_title, []);
+            }
+            categoriesMap.get(item.category_title)!.push({
+              id: item.item_id,
+              text: item.item_text,
+              status: item.status as CheckStatus
+            });
+          });
+
+          const categories: ChecklistCategory[] = Array.from(categoriesMap.entries()).map(([title, items]) => ({
+            title,
+            items
+          }));
+
+          return {
+            id: checklist.id,
+            operatorName: checklist.operator_name,
+            licenseNumber: checklist.license_number,
+            equipmentType: checklist.equipment_type,
+            equipmentNumber: checklist.equipment_number,
+            date: checklist.inspection_date,
+            checklistType: checklist.checklist_type,
+            score: checklist.score,
+            passedItems: checklist.passed_items,
+            failedItems: checklist.failed_items,
+            totalItems: checklist.total_items,
+            categories,
+            submittedAt: checklist.created_at
+          };
+        });
+
+        setSubmittedChecklists(formattedChecklists);
+      }
+    } catch (error) {
+      console.error('Error loading checklists:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load submitted checklists",
+        variant: "destructive"
+      });
+    }
+  };
 
   const currentChecklist = activeTab === "general" ? generalChecklist : craneChecklistState;
   const setCurrentChecklist = activeTab === "general" ? setGeneralChecklist : setCraneChecklistState;
@@ -193,7 +275,7 @@ export default function EquipmentChecklist() {
     return { totalItems, passedItems, failedItems, checkedItems, score };
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!equipmentNumber || !operatorName || !licenseNumber || !equipmentType || !date) {
       toast({
         title: "Missing Information",
@@ -203,47 +285,97 @@ export default function EquipmentChecklist() {
       return;
     }
 
-    const { passedItems, failedItems, totalItems, score } = calculateScore();
+    setIsLoading(true);
 
-    // Create submitted checklist record
-    const submittedChecklist: SubmittedChecklist = {
-      id: Date.now().toString(),
-      operatorName,
-      licenseNumber,
-      equipmentType,
-      equipmentNumber,
-      date,
-      checklistType: activeTab,
-      score,
-      passedItems,
-      failedItems,
-      totalItems,
-      categories: currentChecklist,
-      submittedAt: new Date().toISOString()
-    };
+    try {
+      const { passedItems, failedItems, totalItems, score } = calculateScore();
 
-    // Add to submitted checklists
-    setSubmittedChecklists(prev => [submittedChecklist, ...prev]);
+      // Insert the main checklist record
+      const { data: checklistData, error: checklistError } = await supabase
+        .from('checklists')
+        .insert({
+          operator_name: operatorName,
+          license_number: licenseNumber,
+          equipment_type: equipmentType,
+          equipment_number: equipmentNumber,
+          inspection_date: date,
+          checklist_type: activeTab,
+          score,
+          passed_items: passedItems,
+          failed_items: failedItems,
+          total_items: totalItems
+        })
+        .select()
+        .single();
 
-    // Reset form
-    setEquipmentNumber("");
-    setOperatorName("");
-    setLicenseNumber("");
-    setEquipmentType("");
-    setDate("");
-    setGeneralChecklist(generalEquipmentChecklist.map(category => ({
-      ...category,
-      items: category.items.map(item => ({ ...item, status: "unchecked" as CheckStatus }))
-    })));
-    setCraneChecklistState(craneChecklist.map(category => ({
-      ...category,
-      items: category.items.map(item => ({ ...item, status: "unchecked" as CheckStatus }))
-    })));
+      if (checklistError) {
+        console.error('Error inserting checklist:', checklistError);
+        toast({
+          title: "Error",
+          description: "Failed to submit checklist",
+          variant: "destructive"
+        });
+        return;
+      }
 
-    toast({
-      title: "Report Submitted",
-      description: `Inspection complete: ${passedItems} passed, ${failedItems} failed, ${totalItems - passedItems - failedItems} unchecked. Score: ${score}%`,
-    });
+      // Insert all checklist items
+      const checklistItems = currentChecklist.flatMap(category =>
+        category.items.map(item => ({
+          checklist_id: checklistData.id,
+          category_title: category.title,
+          item_id: item.id,
+          item_text: item.text,
+          status: item.status
+        }))
+      );
+
+      const { error: itemsError } = await supabase
+        .from('checklist_items')
+        .insert(checklistItems);
+
+      if (itemsError) {
+        console.error('Error inserting checklist items:', itemsError);
+        toast({
+          title: "Error",
+          description: "Failed to submit checklist items",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Reset form
+      setEquipmentNumber("");
+      setOperatorName("");
+      setLicenseNumber("");
+      setEquipmentType("");
+      setDate("");
+      setGeneralChecklist(generalEquipmentChecklist.map(category => ({
+        ...category,
+        items: category.items.map(item => ({ ...item, status: "unchecked" as CheckStatus }))
+      })));
+      setCraneChecklistState(craneChecklist.map(category => ({
+        ...category,
+        items: category.items.map(item => ({ ...item, status: "unchecked" as CheckStatus }))
+      })));
+
+      // Reload submitted checklists
+      await loadSubmittedChecklists();
+
+      toast({
+        title: "Report Submitted",
+        description: `Inspection complete: ${passedItems} passed, ${failedItems} failed, ${totalItems - passedItems - failedItems} unchecked. Score: ${score}%`,
+      });
+
+    } catch (error) {
+      console.error('Error submitting checklist:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit checklist",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -557,10 +689,11 @@ export default function EquipmentChecklist() {
                 setActiveTab(type);
                 handleSubmit();
               }}
-              className="bg-industrial-green hover:bg-industrial-green/90 text-white font-semibold py-3 px-8 text-lg shadow-elevated"
+              disabled={isLoading}
+              className="bg-industrial-green hover:bg-industrial-green/90 text-white font-semibold py-3 px-8 text-lg shadow-elevated disabled:opacity-50"
               size="lg"
             >
-              SUBMIT REPORT
+              {isLoading ? "SUBMITTING..." : "SUBMIT REPORT"}
             </Button>
           </div>
         </div>
