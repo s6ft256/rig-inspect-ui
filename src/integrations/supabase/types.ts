@@ -14,7 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      checklist_items: {
+        Row: {
+          category_title: string
+          checklist_id: string
+          created_at: string
+          id: string
+          item_id: string
+          item_text: string
+          status: Database["public"]["Enums"]["check_status"]
+        }
+        Insert: {
+          category_title: string
+          checklist_id: string
+          created_at?: string
+          id?: string
+          item_id: string
+          item_text: string
+          status?: Database["public"]["Enums"]["check_status"]
+        }
+        Update: {
+          category_title?: string
+          checklist_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_text?: string
+          status?: Database["public"]["Enums"]["check_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_items_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "checklists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklists: {
+        Row: {
+          checklist_type: Database["public"]["Enums"]["equipment_type"]
+          created_at: string
+          equipment_number: string
+          equipment_type: string
+          failed_items: number | null
+          id: string
+          inspection_date: string
+          license_number: string
+          operator_name: string
+          passed_items: number | null
+          score: number | null
+          total_items: number | null
+          updated_at: string
+        }
+        Insert: {
+          checklist_type: Database["public"]["Enums"]["equipment_type"]
+          created_at?: string
+          equipment_number: string
+          equipment_type: string
+          failed_items?: number | null
+          id?: string
+          inspection_date: string
+          license_number: string
+          operator_name: string
+          passed_items?: number | null
+          score?: number | null
+          total_items?: number | null
+          updated_at?: string
+        }
+        Update: {
+          checklist_type?: Database["public"]["Enums"]["equipment_type"]
+          created_at?: string
+          equipment_number?: string
+          equipment_type?: string
+          failed_items?: number | null
+          id?: string
+          inspection_date?: string
+          license_number?: string
+          operator_name?: string
+          passed_items?: number | null
+          score?: number | null
+          total_items?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +108,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      check_status: "unchecked" | "passed" | "failed"
+      equipment_type: "general" | "crane"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +236,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      check_status: ["unchecked", "passed", "failed"],
+      equipment_type: ["general", "crane"],
+    },
   },
 } as const
