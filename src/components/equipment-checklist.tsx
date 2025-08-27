@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Check, X, Calendar, User, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { ImageUpload } from "@/components/image/ImageUpload";
+import { DefaultEquipmentImage } from "@/components/image/DefaultEquipmentImages";
 
 type EquipmentType = "general" | "crane";
 type CheckStatus = "unchecked" | "passed" | "failed";
@@ -16,6 +18,7 @@ interface ChecklistItem {
   id: string;
   text: string;
   status: CheckStatus;
+  imageUrl?: string;
 }
 
 interface ChecklistCategory {
@@ -172,6 +175,13 @@ export default function EquipmentChecklist() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Function to handle image upload for checklist items
+  const handleImageUpload = (categoryIndex: number, itemIndex: number, imageUrl: string) => {
+    const newChecklist = [...currentChecklist];
+    newChecklist[categoryIndex].items[itemIndex].imageUrl = imageUrl;
+    setCurrentChecklist(newChecklist);
+  };
+
   // Load submitted checklists from Supabase on component mount
   useEffect(() => {
     loadSubmittedChecklists();
@@ -187,7 +197,8 @@ export default function EquipmentChecklist() {
             category_title,
             item_id,
             item_text,
-            status
+            status,
+            image_url
           )
         `)
         .order('created_at', { ascending: false });
@@ -214,7 +225,8 @@ export default function EquipmentChecklist() {
             categoriesMap.get(item.category_title)!.push({
               id: item.item_id,
               text: item.item_text,
-              status: item.status as CheckStatus
+              status: item.status as CheckStatus,
+              imageUrl: item.image_url || undefined
             });
           });
 
@@ -325,7 +337,8 @@ export default function EquipmentChecklist() {
           category_title: category.title,
           item_id: item.id,
           item_text: item.text,
-          status: item.status
+          status: item.status,
+          image_url: item.imageUrl || null
         }))
       );
 
@@ -379,11 +392,11 @@ export default function EquipmentChecklist() {
   };
 
   return (
-    <div className="min-h-screen bg-industrial-charcoal p-4 md:p-6">
+    <div className="p-4 md:p-6">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold text-industrial-white tracking-wide">
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-wide">
             DAILY EQUIPMENT INSPECTION
           </h1>
         </div>
@@ -409,20 +422,20 @@ export default function EquipmentChecklist() {
           </TabsList>
 
           <TabsContent value="new-inspection">
-            <Card className="bg-industrial-card border-border shadow-elevated">
+            <Card className="bg-card border-border shadow-elevated">
               <div className="p-6 text-center">
-                <h2 className="text-xl font-semibold text-industrial-white mb-4">Select Equipment Type</h2>
-                <p className="text-industrial-grey mb-6">Choose the type of equipment you want to inspect</p>
+                <h2 className="text-xl font-semibold text-foreground mb-4">Select Equipment Type</h2>
+                <p className="text-muted-foreground mb-6">Choose the type of equipment you want to inspect</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Button
                     onClick={() => setActiveTab("general")}
-                    className="h-24 text-lg bg-industrial-blue hover:bg-industrial-blue/90"
+                    className="h-24 text-lg"
                   >
                     General Heavy Equipment
                   </Button>
                   <Button
                     onClick={() => setActiveTab("crane")}
-                    className="h-24 text-lg bg-industrial-blue hover:bg-industrial-blue/90"
+                    className="h-24 text-lg"
                   >
                     Mobile Crane
                   </Button>
@@ -440,20 +453,20 @@ export default function EquipmentChecklist() {
           </TabsContent>
 
           <TabsContent value="submitted">
-            <Card className="bg-industrial-card border-border shadow-elevated">
+            <Card className="bg-card border-border shadow-elevated">
               <div className="p-6">
                 <div className="flex items-center gap-2 mb-6">
-                  <Calendar className="w-6 h-6 text-industrial-blue" />
-                  <h2 className="text-xl font-semibold text-industrial-white">
+                  <Calendar className="w-6 h-6 text-primary" />
+                  <h2 className="text-xl font-semibold text-foreground">
                     Submitted Checklists ({submittedChecklists.length})
                   </h2>
                 </div>
                 
                 {submittedChecklists.length === 0 ? (
                   <div className="text-center py-12">
-                    <Calendar className="w-16 h-16 text-industrial-grey mx-auto mb-4 opacity-50" />
-                    <p className="text-industrial-grey text-lg">No submitted checklists yet</p>
-                    <p className="text-industrial-grey/70 text-sm mt-2">Complete an inspection to see it here</p>
+                    <Calendar className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <p className="text-muted-foreground text-lg">No submitted checklists yet</p>
+                    <p className="text-muted-foreground/70 text-sm mt-2">Complete an inspection to see it here</p>
                   </div>
                 ) : (
                   <ScrollArea className="h-96">
@@ -533,7 +546,7 @@ export default function EquipmentChecklist() {
 
     return (
 
-      <Card className="bg-industrial-card border-border shadow-elevated">
+      <Card className="bg-card border-border shadow-elevated">
         <div className="p-6">
           {/* Input Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
@@ -650,30 +663,58 @@ export default function EquipmentChecklist() {
                     <h3 className="text-industrial-white font-semibold text-sm uppercase tracking-wider">
                       {category.title}
                     </h3>
-                    <div className="space-y-2">
-                      {category.items.map((item, itemIndex) => (
-                        <div key={item.id} className="flex items-center justify-between py-3 px-4 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
-                          <span className="text-industrial-grey flex-1">
-                            {item.text}
-                          </span>
-                          <div className="flex items-center gap-3 ml-4">
-                            <CheckboxButton
-                              status={item.status}
-                              onClick={() => handleStatusChange(categoryIndex, itemIndex, 
-                                item.status === "passed" ? "unchecked" : "passed"
-                              )}
-                              type="pass"
-                            />
-                            <CheckboxButton
-                              status={item.status}
-                              onClick={() => handleStatusChange(categoryIndex, itemIndex, 
-                                item.status === "failed" ? "unchecked" : "failed"
-                              )}
-                              type="fail"
-                            />
-                          </div>
-                        </div>
-                      ))}
+                     <div className="space-y-2">
+                       {category.items.map((item, itemIndex) => (
+                         <div key={item.id} className="flex items-center gap-4 py-3 px-4 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
+                           <div className="flex-shrink-0">
+                             {item.imageUrl ? (
+                               <img
+                                 src={item.imageUrl}
+                                 alt={item.text}
+                                 className="h-12 w-12 object-cover rounded border"
+                               />
+                             ) : (
+                               <DefaultEquipmentImage
+                                 category={category.title}
+                                 itemText={item.text}
+                                 className="h-12 w-12"
+                               />
+                             )}
+                           </div>
+                           <div className="flex-1">
+                             <span className="text-industrial-grey">
+                               {item.text}
+                             </span>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <ImageUpload
+                               onImageUpload={(imageUrl) => {
+                                 const newChecklist = [...checklist];
+                                 newChecklist[categoryIndex].items[itemIndex].imageUrl = imageUrl;
+                                 setChecklist(newChecklist);
+                               }}
+                               currentImageUrl={item.imageUrl}
+                               itemId={`${type}-${category.title}-${item.id}`}
+                             />
+                           </div>
+                           <div className="flex items-center gap-3">
+                             <CheckboxButton
+                               status={item.status}
+                               onClick={() => handleStatusChange(categoryIndex, itemIndex, 
+                                 item.status === "passed" ? "unchecked" : "passed"
+                               )}
+                               type="pass"
+                             />
+                             <CheckboxButton
+                               status={item.status}
+                               onClick={() => handleStatusChange(categoryIndex, itemIndex, 
+                                 item.status === "failed" ? "unchecked" : "failed"
+                               )}
+                               type="fail"
+                             />
+                           </div>
+                         </div>
+                       ))}
                     </div>
                   </div>
                 ))}

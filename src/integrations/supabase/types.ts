@@ -20,6 +20,7 @@ export type Database = {
           checklist_id: string
           created_at: string
           id: string
+          image_url: string | null
           item_id: string
           item_text: string
           status: Database["public"]["Enums"]["check_status"]
@@ -29,6 +30,7 @@ export type Database = {
           checklist_id: string
           created_at?: string
           id?: string
+          image_url?: string | null
           item_id: string
           item_text: string
           status?: Database["public"]["Enums"]["check_status"]
@@ -38,6 +40,7 @@ export type Database = {
           checklist_id?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           item_id?: string
           item_text?: string
           status?: Database["public"]["Enums"]["check_status"]
