@@ -1,20 +1,4 @@
 import React from 'react';
-import engineImage from '@/assets/equipment/engine.jpg';
-import hydraulicImage from '@/assets/equipment/hydraulic.jpg';
-import brakeImage from '@/assets/equipment/brake.jpg';
-import lightImage from '@/assets/equipment/light.jpg';
-import tireImage from '@/assets/equipment/tire.jpg';
-import seatImage from '@/assets/equipment/seat.jpg';
-import fireExtinguisherImage from '@/assets/equipment/fire-extinguisher.jpg';
-import hornImage from '@/assets/equipment/horn.jpg';
-import mirrorImage from '@/assets/equipment/mirror.jpg';
-import fuelImage from '@/assets/equipment/fuel.jpg';
-import batteryImage from '@/assets/equipment/battery.jpg';
-import winchImage from '@/assets/equipment/winch.jpg';
-import craneImage from '@/assets/equipment/crane.jpg';
-import trackImage from '@/assets/equipment/track.jpg';
-import safetyImage from '@/assets/equipment/safety.jpg';
-import defaultImage from '@/assets/equipment/default.jpg';
 
 interface DefaultEquipmentImageProps {
   category: string;
@@ -22,36 +6,168 @@ interface DefaultEquipmentImageProps {
   className?: string;
 }
 
-// Map of equipment categories to default images
+// Map of equipment categories to real Pexels images
 const getDefaultImage = (category: string, itemText: string): string => {
   const categoryLower = category.toLowerCase();
   const itemLower = itemText.toLowerCase();
   
-  // Equipment-specific images
-  if (itemLower.includes('engine') || itemLower.includes('motor')) return engineImage;
-  if (itemLower.includes('hydraulic') || itemLower.includes('fluid')) return hydraulicImage;
-  if (itemLower.includes('brake') || itemLower.includes('stop')) return brakeImage;
-  if (itemLower.includes('light') || itemLower.includes('beam')) return lightImage;
-  if (itemLower.includes('tire') || itemLower.includes('wheel')) return tireImage;
-  if (itemLower.includes('seat') || itemLower.includes('belt')) return seatImage;
-  if (itemLower.includes('fire') || itemLower.includes('extinguisher')) return fireExtinguisherImage;
-  if (itemLower.includes('horn') || itemLower.includes('alarm')) return hornImage;
-  if (itemLower.includes('mirror') || itemLower.includes('vision')) return mirrorImage;
-  if (itemLower.includes('fuel') || itemLower.includes('gas')) return fuelImage;
-  if (itemLower.includes('battery') || itemLower.includes('electrical')) return batteryImage;
-  if (itemLower.includes('winch') || itemLower.includes('cable')) return winchImage;
-  if (itemLower.includes('boom') || itemLower.includes('arm')) return craneImage;
-  if (itemLower.includes('track') || itemLower.includes('chain')) return trackImage;
+  // General Equipment Images (Excavator/Heavy Equipment)
+  if (itemLower.includes('engine') || itemLower.includes('motor')) {
+    return 'https://images.pexels.com/photos/190574/pexels-photo-190574.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('hydraulic') || itemLower.includes('fluid')) {
+    return 'https://images.pexels.com/photos/162553/keys-workshop-mechanic-tools-162553.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('battery') || itemLower.includes('electrical')) {
+    return 'https://images.pexels.com/photos/257736/pexels-photo-257736.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('air filter') || itemLower.includes('filter')) {
+    return 'https://images.pexels.com/photos/279949/pexels-photo-279949.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('cabin') || itemLower.includes('glass')) {
+    return 'https://images.pexels.com/photos/1078884/pexels-photo-1078884.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('seat') || itemLower.includes('seatbelt')) {
+    return 'https://images.pexels.com/photos/164634/pexels-photo-164634.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('controls') || itemLower.includes('operator')) {
+    return 'https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('lights') || itemLower.includes('gauges') || itemLower.includes('signals')) {
+    return 'https://images.pexels.com/photos/97075/pexels-photo-97075.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('horn') || itemLower.includes('alarm')) {
+    return 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('track') || itemLower.includes('roller')) {
+    return 'https://images.pexels.com/photos/1078883/pexels-photo-1078883.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('tire') || itemLower.includes('wheel')) {
+    return 'https://images.pexels.com/photos/190574/pexels-photo-190574.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('brake') || itemLower.includes('parking')) {
+    return 'https://images.pexels.com/photos/279949/pexels-photo-279949.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('bucket') || itemLower.includes('attachment')) {
+    return 'https://images.pexels.com/photos/1078885/pexels-photo-1078885.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('guards') || itemLower.includes('shields')) {
+    return 'https://images.pexels.com/photos/162553/keys-workshop-mechanic-tools-162553.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('pins') || itemLower.includes('locks')) {
+    return 'https://images.pexels.com/photos/162553/keys-workshop-mechanic-tools-162553.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('fire extinguisher') || itemLower.includes('extinguisher')) {
+    return 'https://images.pexels.com/photos/618200/pexels-photo-618200.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('first aid') || itemLower.includes('aid kit')) {
+    return 'https://images.pexels.com/photos/263402/pexels-photo-263402.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('documents') || itemLower.includes('logs')) {
+    return 'https://images.pexels.com/photos/590016/pexels-photo-590016.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  // Mobile Crane Specific Images
+  if (itemLower.includes('hoist') || itemLower.includes('hook')) {
+    return 'https://images.pexels.com/photos/236705/pexels-photo-236705.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('boom') || itemLower.includes('jib')) {
+    return 'https://images.pexels.com/photos/236705/pexels-photo-236705.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('lattice') || itemLower.includes('sections')) {
+    return 'https://images.pexels.com/photos/236705/pexels-photo-236705.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('slew ring') || itemLower.includes('gear')) {
+    return 'https://images.pexels.com/photos/162553/keys-workshop-mechanic-tools-162553.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('outriggers') || itemLower.includes('pads')) {
+    return 'https://images.pexels.com/photos/236705/pexels-photo-236705.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('levelness') || itemLower.includes('level')) {
+    return 'https://images.pexels.com/photos/162553/keys-workshop-mechanic-tools-162553.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('lmi') || itemLower.includes('load moment')) {
+    return 'https://images.pexels.com/photos/97075/pexels-photo-97075.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('anti-two-block') || itemLower.includes('two-block')) {
+    return 'https://images.pexels.com/photos/97075/pexels-photo-97075.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('wire rope') || itemLower.includes('birdcaging')) {
+    return 'https://images.pexels.com/photos/236705/pexels-photo-236705.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (itemLower.includes('rigging') || itemLower.includes('rigging equipment')) {
+    return 'https://images.pexels.com/photos/236705/pexels-photo-236705.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
   
   // Category-based fallbacks
-  if (categoryLower.includes('crane') || categoryLower.includes('mobile')) return craneImage;
-  if (categoryLower.includes('engine') || categoryLower.includes('mechanical')) return engineImage;
-  if (categoryLower.includes('safety') || categoryLower.includes('warning')) return safetyImage;
-  if (categoryLower.includes('electrical') || categoryLower.includes('control')) return batteryImage;
-  if (categoryLower.includes('hydraulic') || categoryLower.includes('fluid')) return hydraulicImage;
+  if (categoryLower.includes('crane') || categoryLower.includes('mobile')) {
+    return 'https://images.pexels.com/photos/236705/pexels-photo-236705.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
   
-  // Default fallback
-  return defaultImage;
+  if (categoryLower.includes('engine') || categoryLower.includes('power')) {
+    return 'https://images.pexels.com/photos/190574/pexels-photo-190574.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (categoryLower.includes('operator') || categoryLower.includes('station')) {
+    return 'https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (categoryLower.includes('chassis') || categoryLower.includes('undercarriage')) {
+    return 'https://images.pexels.com/photos/1078883/pexels-photo-1078883.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (categoryLower.includes('attachments') || categoryLower.includes('hydraulics')) {
+    return 'https://images.pexels.com/photos/1078885/pexels-photo-1078885.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (categoryLower.includes('safety') || categoryLower.includes('final')) {
+    return 'https://images.pexels.com/photos/618200/pexels-photo-618200.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (categoryLower.includes('hoist') || categoryLower.includes('hook')) {
+    return 'https://images.pexels.com/photos/236705/pexels-photo-236705.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (categoryLower.includes('boom') || categoryLower.includes('structural')) {
+    return 'https://images.pexels.com/photos/236705/pexels-photo-236705.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (categoryLower.includes('stability') || categoryLower.includes('support')) {
+    return 'https://images.pexels.com/photos/236705/pexels-photo-236705.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  if (categoryLower.includes('wire rope') || categoryLower.includes('rigging')) {
+    return 'https://images.pexels.com/photos/236705/pexels-photo-236705.jpeg?auto=compress&cs=tinysrgb&w=400';
+  }
+  
+  // Default fallback - general heavy equipment
+  return 'https://images.pexels.com/photos/1078884/pexels-photo-1078884.jpeg?auto=compress&cs=tinysrgb&w=400';
 };
 
 export const DefaultEquipmentImage: React.FC<DefaultEquipmentImageProps> = ({
