@@ -315,7 +315,8 @@ export default function EquipmentChecklist() {
           score,
           passed_items: passedItems,
           failed_items: failedItems,
-          total_items: totalItems
+          total_items: totalItems,
+          user_id: (await supabase.auth.getUser()).data.user?.id
         })
         .select()
         .single();
@@ -331,6 +332,7 @@ export default function EquipmentChecklist() {
       }
 
       // Insert all checklist items
+      const user = await supabase.auth.getUser();
       const checklistItems = currentChecklist.flatMap(category =>
         category.items.map(item => ({
           checklist_id: checklistData.id,
@@ -338,7 +340,8 @@ export default function EquipmentChecklist() {
           item_id: item.id,
           item_text: item.text,
           status: item.status,
-          image_url: item.imageUrl || null
+          image_url: item.imageUrl || null,
+          user_id: user.data.user?.id
         }))
       );
 

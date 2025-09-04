@@ -24,6 +24,7 @@ export type Database = {
           item_id: string
           item_text: string
           status: Database["public"]["Enums"]["check_status"]
+          user_id: string
         }
         Insert: {
           category_title: string
@@ -34,6 +35,7 @@ export type Database = {
           item_id: string
           item_text: string
           status?: Database["public"]["Enums"]["check_status"]
+          user_id?: string
         }
         Update: {
           category_title?: string
@@ -44,6 +46,7 @@ export type Database = {
           item_id?: string
           item_text?: string
           status?: Database["public"]["Enums"]["check_status"]
+          user_id?: string
         }
         Relationships: [
           {
@@ -70,6 +73,7 @@ export type Database = {
           score: number | null
           total_items: number | null
           updated_at: string
+          user_id: string
         }
         Insert: {
           checklist_type: Database["public"]["Enums"]["equipment_type"]
@@ -85,6 +89,7 @@ export type Database = {
           score?: number | null
           total_items?: number | null
           updated_at?: string
+          user_id?: string
         }
         Update: {
           checklist_type?: Database["public"]["Enums"]["equipment_type"]
@@ -100,6 +105,7 @@ export type Database = {
           score?: number | null
           total_items?: number | null
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
