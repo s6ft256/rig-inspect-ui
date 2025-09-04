@@ -25,6 +25,7 @@ export default function Auth() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Starting sign in attempt...');
     try {
       setLoading(true);
       const { error } = await supabase.auth.signInWithPassword({
@@ -32,7 +33,10 @@ export default function Auth() {
         password,
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase auth error:', error);
+        throw error;
+      }
       
       toast({
         title: "Welcome back!",
