@@ -82,7 +82,7 @@ export type Database = {
           equipment_type: string
           failed_items?: number | null
           id?: string
-          inspection_date: string
+          inspection_date?: string
           license_number: string
           operator_name: string
           passed_items?: number | null
@@ -118,7 +118,7 @@ export type Database = {
     }
     Enums: {
       check_status: "unchecked" | "passed" | "failed"
-      equipment_type: "general" | "crane"
+      equipment_type: "general" | "mobile_crane"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -247,7 +247,7 @@ export const Constants = {
   public: {
     Enums: {
       check_status: ["unchecked", "passed", "failed"],
-      equipment_type: ["general", "crane"],
+      equipment_type: ["general", "mobile_crane"],
     },
   },
 } as const

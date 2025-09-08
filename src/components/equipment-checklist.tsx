@@ -1,18 +1,20 @@
-import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { Check, X, Calendar, User, Settings } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { ImageUpload } from "@/components/image/ImageUpload";
-import { DefaultEquipmentImage } from "@/components/image/DefaultEquipmentImages";
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { useToast } from '@/hooks/use-toast';
+import { ImageUpload } from './image/ImageUpload';
+import { Check, X, Calendar, User, FileText, Star, Loader2 } from 'lucide-react';
 
-type EquipmentType = "general" | "crane";
-type CheckStatus = "unchecked" | "passed" | "failed";
+type CheckStatus = 'unchecked' | 'passed' | 'failed';
+type EquipmentType = 'general' | 'mobile_crane';
 
 interface ChecklistItem {
   id: string;
@@ -28,720 +30,593 @@ interface ChecklistCategory {
 
 interface SubmittedChecklist {
   id: string;
-  operatorName: string;
-  licenseNumber: string;
-  equipmentType: string;
-  equipmentNumber: string;
-  date: string;
-  checklistType: "general" | "crane";
+  inspection_date: string;
+  checklist_type: EquipmentType;
+  operator_name: string;
+  license_number: string;
+  equipment_type: string;
+  equipment_number: string;
   score: number;
-  passedItems: number;
-  failedItems: number;
-  totalItems: number;
-  categories: ChecklistCategory[];
-  submittedAt: string;
+  passed_items: number;
+  failed_items: number;
+  total_items: number;
+  created_at: string;
 }
 
+// Predefined checklists
 const generalEquipmentChecklist: ChecklistCategory[] = [
   {
-    title: "PRE-OPERATIONAL DOCUMENTATION",
+    title: "Engine and Power",
     items: [
-      { id: "docs", text: "Documents & Logs (in order)", status: "unchecked" }
+      { id: "engine_1", text: "Engine oil level and condition", status: "unchecked" },
+      { id: "engine_2", text: "Coolant level and condition", status: "unchecked" },
+      { id: "engine_3", text: "Air filter condition", status: "unchecked" },
+      { id: "engine_4", text: "Fuel level and fuel system", status: "unchecked" },
+      { id: "engine_5", text: "Battery condition and terminals", status: "unchecked" },
     ]
   },
   {
-    title: "ENGINE & POWER UNIT",
+    title: "Hydraulic System",
     items: [
-      { id: "engine", text: "Engine Condition (no leaks, noises)", status: "unchecked" },
-      { id: "fluids", text: "Fluid Levels (Oil, Coolant, Hydraulic)", status: "unchecked" },
-      { id: "battery", text: "Battery Connection & Condition", status: "unchecked" },
-      { id: "air-filter", text: "Air Filter Condition", status: "unchecked" }
+      { id: "hydraulic_1", text: "Hydraulic fluid level", status: "unchecked" },
+      { id: "hydraulic_2", text: "Hydraulic hoses and connections", status: "unchecked" },
+      { id: "hydraulic_3", text: "Hydraulic pump operation", status: "unchecked" },
+      { id: "hydraulic_4", text: "Cylinder operation and seals", status: "unchecked" },
     ]
   },
   {
-    title: "OPERATOR STATION",
+    title: "Safety Systems",
     items: [
-      { id: "cabin", text: "Operator Cabin (clean, glass intact)", status: "unchecked" },
-      { id: "seat", text: "Seat & Seatbelt Function", status: "unchecked" },
-      { id: "controls", text: "Operator Controls Functional", status: "unchecked" },
-      { id: "lights", text: "Lights, Gauges & Signals Operational", status: "unchecked" },
-      { id: "horn", text: "Horn & Alarms Functional", status: "unchecked" }
+      { id: "safety_1", text: "Seat belt condition and operation", status: "unchecked" },
+      { id: "safety_2", text: "ROPS/FOPS structure", status: "unchecked" },
+      { id: "safety_3", text: "Warning lights and alarms", status: "unchecked" },
+      { id: "safety_4", text: "Fire extinguisher present and charged", status: "unchecked" },
+      { id: "safety_5", text: "Emergency stops functioning", status: "unchecked" },
     ]
   },
   {
-    title: "CHASSIS & UNDERCARRIAGE",
+    title: "Tracks/Tires and Undercarriage",
     items: [
-      { id: "tracks", text: "Roller & Track Condition (if applicable)", status: "unchecked" },
-      { id: "tires", text: "Tire Pressure & Condition (including wear)", status: "unchecked" },
-      { id: "brakes", text: "Brakes & Parking Brake", status: "unchecked" },
-      { id: "noises", text: "No Abnormal Noises or Vibrations", status: "unchecked" }
-    ]
-  },
-  {
-    title: "ATTACHMENTS & HYDRAULICS",
-    items: [
-      { id: "bucket", text: "Bucket Condition (if equipped, for cracks/wear)", status: "unchecked" },
-      { id: "hydraulic", text: "Hydraulic System (no leaks, hoses intact)", status: "unchecked" },
-      { id: "guards", text: "Safety Guards & Shields in Place", status: "unchecked" },
-      { id: "pins", text: "Attachment Pins & Locks Secure", status: "unchecked" }
-    ]
-  },
-  {
-    title: "FINAL CHECKS",
-    items: [
-      { id: "clean", text: "Cleanliness & Free of Debris", status: "unchecked" },
-      { id: "extinguisher", text: "Fire Extinguisher Present & Charged", status: "unchecked" },
-      { id: "first-aid", text: "First Aid Kit Present", status: "unchecked" }
+      { id: "tracks_1", text: "Track/tire condition and wear", status: "unchecked" },
+      { id: "tracks_2", text: "Track tension (if applicable)", status: "unchecked" },
+      { id: "tracks_3", text: "Sprockets and idlers", status: "unchecked" },
+      { id: "tracks_4", text: "Undercarriage frame condition", status: "unchecked" },
     ]
   }
 ];
 
 const craneChecklist: ChecklistCategory[] = [
   {
-    title: "HOIST & HOOK SYSTEMS",
+    title: "Pre-Operation Inspection",
     items: [
-      { id: "main-hoist", text: "Main Hoist Line & Hook (for damage)", status: "unchecked" },
-      { id: "aux-hoist", text: "Auxiliary Hoist (Swinger Hook)", status: "unchecked" }
+      { id: "crane_1", text: "Crane certification and inspection records", status: "unchecked" },
+      { id: "crane_2", text: "Load charts present and legible", status: "unchecked" },
+      { id: "crane_3", text: "Operator manual present", status: "unchecked" },
+      { id: "crane_4", text: "Crane capacity placards visible", status: "unchecked" },
     ]
   },
   {
-    title: "BOOM & STRUCTURAL",
+    title: "Boom and Rigging",
     items: [
-      { id: "boom-jib", text: "Boom & Jib (for cracks, deformities)", status: "unchecked" },
-      { id: "lattice", text: "Lattice Sections & Pins", status: "unchecked" },
-      { id: "slew-ring", text: "Slew Ring & Gear Condition", status: "unchecked" }
+      { id: "boom_1", text: "Boom structure and pins", status: "unchecked" },
+      { id: "boom_2", text: "Boom extension mechanism", status: "unchecked" },
+      { id: "boom_3", text: "Wire rope condition", status: "unchecked" },
+      { id: "boom_4", text: "Hook and block condition", status: "unchecked" },
+      { id: "boom_5", text: "Load block operation", status: "unchecked" },
     ]
   },
   {
-    title: "STABILITY & SUPPORT",
+    title: "Crane Controls",
     items: [
-      { id: "outriggers", text: "Outriggers & Pads (fully extended/retracted)", status: "unchecked" },
-      { id: "levelness", text: "Crane Levelness Check", status: "unchecked" }
+      { id: "controls_1", text: "Boom raise/lower controls", status: "unchecked" },
+      { id: "controls_2", text: "Swing mechanism and controls", status: "unchecked" },
+      { id: "controls_3", text: "Winch operation and controls", status: "unchecked" },
+      { id: "controls_4", text: "Outrigger controls and operation", status: "unchecked" },
+      { id: "controls_5", text: "Load moment indicator (LMI)", status: "unchecked" },
     ]
   },
   {
-    title: "SAFETY SYSTEMS",
+    title: "Safety Devices",
     items: [
-      { id: "lmi", text: "Load Moment Indicator (LMI) Calibration", status: "unchecked" },
-      { id: "anti-two-block", text: "Anti-Two-Block System Test", status: "unchecked" }
-    ]
-  },
-  {
-    title: "WIRE ROPE & RIGGING",
-    items: [
-      { id: "wire-rope", text: "Wire Rope (for birdcaging, kinks)", status: "unchecked" },
-      { id: "rigging", text: "Rigging Equipment Inspection (separate log)", status: "unchecked" }
+      { id: "crane_safety_1", text: "Anti-two block system", status: "unchecked" },
+      { id: "crane_safety_2", text: "Load block warning device", status: "unchecked" },
+      { id: "crane_safety_3", text: "Swing lock mechanism", status: "unchecked" },
+      { id: "crane_safety_4", text: "Outrigger float alarm", status: "unchecked" },
+      { id: "crane_safety_5", text: "Rated capacity indicator", status: "unchecked" },
     ]
   }
 ];
 
-interface CheckboxButtonProps {
+const CheckboxButton: React.FC<{
   status: CheckStatus;
-  onClick: () => void;
-  type: "pass" | "fail";
-}
-
-function CheckboxButton({ status, onClick, type }: CheckboxButtonProps) {
-  const isActive = (type === "pass" && status === "passed") || (type === "fail" && status === "failed");
-  
-  return (
-    <button
-      onClick={onClick}
-      className={`w-8 h-8 rounded border-2 flex items-center justify-center transition-all duration-200 ${
-        isActive
-          ? type === "pass"
-            ? "bg-industrial-green border-industrial-green text-white shadow-sm"
-            : "bg-destructive border-destructive text-white shadow-sm"
-          : "border-border hover:border-industrial-blue bg-background"
-      }`}
-    >
-      {isActive && (
-        type === "pass" ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />
-      )}
-    </button>
-  );
-}
-
-export default function EquipmentChecklist() {
-  const [activeTab, setActiveTab] = useState<EquipmentType>("general");
-  const [equipmentNumber, setEquipmentNumber] = useState("");
-  const [operatorName, setOperatorName] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
-  const [equipmentType, setEquipmentType] = useState("");
-  const [date, setDate] = useState("");
-  const [generalChecklist, setGeneralChecklist] = useState(generalEquipmentChecklist);
-  const [craneChecklistState, setCraneChecklistState] = useState(craneChecklist);
-  const [submittedChecklists, setSubmittedChecklists] = useState<SubmittedChecklist[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-
-  // Function to handle image upload for checklist items
-  const handleImageUpload = (categoryIndex: number, itemIndex: number, imageUrl: string) => {
-    const newChecklist = [...currentChecklist];
-    newChecklist[categoryIndex].items[itemIndex].imageUrl = imageUrl;
-    setCurrentChecklist(newChecklist);
+  onStatusChange: (status: CheckStatus) => void;
+}> = ({ status, onStatusChange }) => {
+  const getStatusColor = (status: CheckStatus) => {
+    switch (status) {
+      case 'passed':
+        return 'bg-green-500 hover:bg-green-600 text-white';
+      case 'failed':
+        return 'bg-red-500 hover:bg-red-600 text-white';
+      default:
+        return 'bg-muted hover:bg-muted/80';
+    }
   };
 
-  // Load submitted checklists from Supabase on component mount
+  const getStatusIcon = (status: CheckStatus) => {
+    switch (status) {
+      case 'passed':
+        return <Check className="h-4 w-4" />;
+      case 'failed':
+        return <X className="h-4 w-4" />;
+      default:
+        return null;
+    }
+  };
+
+  const nextStatus = status === 'unchecked' ? 'passed' : status === 'passed' ? 'failed' : 'unchecked';
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className={`w-20 ${getStatusColor(status)}`}
+      onClick={() => onStatusChange(nextStatus)}
+    >
+      {getStatusIcon(status)}
+      <span className="ml-1 text-xs">
+        {status === 'unchecked' ? 'Check' : status === 'passed' ? 'Pass' : 'Fail'}
+      </span>
+    </Button>
+  );
+};
+
+const EquipmentChecklist: React.FC = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("new");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedChecklists, setSubmittedChecklists] = useState<SubmittedChecklist[]>([]);
+
+  // Equipment details
+  const [operatorName, setOperatorName] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [equipmentType, setEquipmentType] = useState('');
+  const [equipmentNumber, setEquipmentNumber] = useState('');
+
+  // Checklist states
+  const [generalChecklist, setGeneralChecklist] = useState<ChecklistCategory[]>(generalEquipmentChecklist);
+  const [craneChecklistState, setCraneChecklistState] = useState<ChecklistCategory[]>(craneChecklist);
+
   useEffect(() => {
-    loadSubmittedChecklists();
-  }, []);
+    if (user) {
+      loadSubmittedChecklists();
+    }
+  }, [user]);
 
   const loadSubmittedChecklists = async () => {
     try {
-      const { data: checklists, error: checklistsError } = await supabase
+      const { data, error } = await supabase
         .from('checklists')
-        .select(`
-          *,
-          checklist_items (
-            category_title,
-            item_id,
-            item_text,
-            status,
-            image_url
-          )
-        `)
-        .order('created_at', { ascending: false });
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-      if (checklistsError) {
-        console.error('Error loading checklists:', checklistsError);
-        toast({
-          title: "Error",
-          description: "Failed to load submitted checklists",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      if (checklists) {
-        const formattedChecklists: SubmittedChecklist[] = checklists.map(checklist => {
-          // Group items by category
-          const categoriesMap = new Map<string, ChecklistItem[]>();
-          
-          checklist.checklist_items.forEach((item: any) => {
-            if (!categoriesMap.has(item.category_title)) {
-              categoriesMap.set(item.category_title, []);
-            }
-            categoriesMap.get(item.category_title)!.push({
-              id: item.item_id,
-              text: item.item_text,
-              status: item.status as CheckStatus,
-              imageUrl: item.image_url || undefined
-            });
-          });
-
-          const categories: ChecklistCategory[] = Array.from(categoriesMap.entries()).map(([title, items]) => ({
-            title,
-            items
-          }));
-
-          return {
-            id: checklist.id,
-            operatorName: checklist.operator_name,
-            licenseNumber: checklist.license_number,
-            equipmentType: checklist.equipment_type,
-            equipmentNumber: checklist.equipment_number,
-            date: checklist.inspection_date,
-            checklistType: checklist.checklist_type,
-            score: checklist.score,
-            passedItems: checklist.passed_items,
-            failedItems: checklist.failed_items,
-            totalItems: checklist.total_items,
-            categories,
-            submittedAt: checklist.created_at
-          };
-        });
-
-        setSubmittedChecklists(formattedChecklists);
-      }
-    } catch (error) {
-      console.error('Error loading checklists:', error);
+      if (error) throw error;
+      setSubmittedChecklists(data || []);
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to load submitted checklists",
-        variant: "destructive"
+        title: "Error loading checklists",
+        description: error.message,
+        variant: "destructive",
       });
     }
   };
 
-  const currentChecklist = activeTab === "general" ? generalChecklist : craneChecklistState;
-  const setCurrentChecklist = activeTab === "general" ? setGeneralChecklist : setCraneChecklistState;
-
-  const handleStatusChange = (categoryIndex: number, itemIndex: number, newStatus: CheckStatus) => {
-    const newChecklist = [...currentChecklist];
-    newChecklist[categoryIndex].items[itemIndex].status = newStatus;
-    setCurrentChecklist(newChecklist);
+  const handleStatusChange = (
+    categoryIndex: number,
+    itemIndex: number,
+    newStatus: CheckStatus,
+    checklistType: 'general' | 'crane'
+  ) => {
+    if (checklistType === 'general') {
+      const updatedChecklist = [...generalChecklist];
+      updatedChecklist[categoryIndex].items[itemIndex].status = newStatus;
+      setGeneralChecklist(updatedChecklist);
+    } else {
+      const updatedChecklist = [...craneChecklistState];
+      updatedChecklist[categoryIndex].items[itemIndex].status = newStatus;
+      setCraneChecklistState(updatedChecklist);
+    }
   };
 
-  const calculateScore = () => {
-    const totalItems = currentChecklist.reduce((acc, category) => acc + category.items.length, 0);
-    const passedItems = currentChecklist.reduce((acc, category) => 
-      acc + category.items.filter(item => item.status === "passed").length, 0
-    );
-    const failedItems = currentChecklist.reduce((acc, category) => 
-      acc + category.items.filter(item => item.status === "failed").length, 0
-    );
-    const checkedItems = passedItems + failedItems;
-    const score = checkedItems > 0 ? Math.round((passedItems / checkedItems) * 100) : 0;
-    
-    return { totalItems, passedItems, failedItems, checkedItems, score };
+  const handleImageUpload = (
+    categoryIndex: number,
+    itemIndex: number,
+    imageUrl: string,
+    checklistType: 'general' | 'crane'
+  ) => {
+    if (checklistType === 'general') {
+      const updatedChecklist = [...generalChecklist];
+      updatedChecklist[categoryIndex].items[itemIndex].imageUrl = imageUrl;
+      setGeneralChecklist(updatedChecklist);
+    } else {
+      const updatedChecklist = [...craneChecklistState];
+      updatedChecklist[categoryIndex].items[itemIndex].imageUrl = imageUrl;
+      setCraneChecklistState(updatedChecklist);
+    }
   };
 
-  const handleSubmit = async () => {
-    if (!equipmentNumber || !operatorName || !licenseNumber || !equipmentType || !date) {
+  const calculateScore = (checklist: ChecklistCategory[]) => {
+    const allItems = checklist.flatMap(category => category.items);
+    const passedItems = allItems.filter(item => item.status === 'passed').length;
+    const failedItems = allItems.filter(item => item.status === 'failed').length;
+    const totalItems = allItems.length;
+    const score = totalItems > 0 ? Math.round((passedItems / totalItems) * 100) : 0;
+
+    return { score, passedItems, failedItems, totalItems };
+  };
+
+  const handleSubmit = async (checklistType: EquipmentType) => {
+    if (!user) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive"
+        title: "Authentication required",
+        description: "Please log in to submit checklists.",
+        variant: "destructive",
       });
       return;
     }
 
-    setIsLoading(true);
+    if (!operatorName || !licenseNumber || !equipmentType || !equipmentNumber) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
-      const { passedItems, failedItems, totalItems, score } = calculateScore();
+      const currentChecklist = checklistType === 'general' ? generalChecklist : craneChecklistState;
+      const { score, passedItems, failedItems, totalItems } = calculateScore(currentChecklist);
 
-      // Insert the main checklist record
+      // Insert main checklist record
       const { data: checklistData, error: checklistError } = await supabase
         .from('checklists')
         .insert({
+          user_id: user.id,
+          inspection_date: new Date().toISOString().split('T')[0],
+          checklist_type: checklistType,
           operator_name: operatorName,
           license_number: licenseNumber,
           equipment_type: equipmentType,
           equipment_number: equipmentNumber,
-          inspection_date: date,
-          checklist_type: activeTab,
           score,
           passed_items: passedItems,
           failed_items: failedItems,
           total_items: totalItems,
-          user_id: (await supabase.auth.getUser()).data.user?.id
         })
         .select()
         .single();
 
-      if (checklistError) {
-        console.error('Error inserting checklist:', checklistError);
-        toast({
-          title: "Error",
-          description: "Failed to submit checklist",
-          variant: "destructive"
-        });
-        return;
-      }
+      if (checklistError) throw checklistError;
 
-      // Insert all checklist items
-      const user = await supabase.auth.getUser();
-      const checklistItems = currentChecklist.flatMap(category =>
-        category.items.map(item => ({
+      // Insert checklist items
+      const itemsToInsert = currentChecklist.flatMap((category, categoryIndex) =>
+        category.items.map((item) => ({
+          user_id: user.id,
           checklist_id: checklistData.id,
-          category_title: category.title,
           item_id: item.id,
           item_text: item.text,
+          category_title: category.title,
           status: item.status,
           image_url: item.imageUrl || null,
-          user_id: user.data.user?.id
         }))
       );
 
       const { error: itemsError } = await supabase
         .from('checklist_items')
-        .insert(checklistItems);
+        .insert(itemsToInsert);
 
-      if (itemsError) {
-        console.error('Error inserting checklist items:', itemsError);
-        toast({
-          title: "Error",
-          description: "Failed to submit checklist items",
-          variant: "destructive"
-        });
-        return;
-      }
+      if (itemsError) throw itemsError;
+
+      toast({
+        title: "Checklist submitted successfully!",
+        description: `Inspection score: ${score}%`,
+      });
 
       // Reset form
-      setEquipmentNumber("");
-      setOperatorName("");
-      setLicenseNumber("");
-      setEquipmentType("");
-      setDate("");
-      setGeneralChecklist(generalEquipmentChecklist.map(category => ({
-        ...category,
-        items: category.items.map(item => ({ ...item, status: "unchecked" as CheckStatus }))
-      })));
-      setCraneChecklistState(craneChecklist.map(category => ({
-        ...category,
-        items: category.items.map(item => ({ ...item, status: "unchecked" as CheckStatus }))
-      })));
+      setOperatorName('');
+      setLicenseNumber('');
+      setEquipmentType('');
+      setEquipmentNumber('');
+      
+      // Reset checklists
+      if (checklistType === 'general') {
+        setGeneralChecklist(generalEquipmentChecklist);
+      } else {
+        setCraneChecklistState(craneChecklist);
+      }
 
       // Reload submitted checklists
-      await loadSubmittedChecklists();
+      loadSubmittedChecklists();
+      setActiveTab("submitted");
 
+    } catch (error: any) {
       toast({
-        title: "Report Submitted",
-        description: `Inspection complete: ${passedItems} passed, ${failedItems} failed, ${totalItems - passedItems - failedItems} unchecked. Score: ${score}%`,
-      });
-
-    } catch (error) {
-      console.error('Error submitting checklist:', error);
-      toast({
-        title: "Error",
-        description: "Failed to submit checklist",
-        variant: "destructive"
+        title: "Error submitting checklist",
+        description: error.message,
+        variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="p-4 md:p-6">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-wide">
-            DAILY EQUIPMENT INSPECTION
-          </h1>
-        </div>
-
-        <Tabs defaultValue="new-inspection" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="new-inspection" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              New Inspection
-            </TabsTrigger>
-            <TabsTrigger value="general" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              General Equipment
-            </TabsTrigger>
-            <TabsTrigger value="crane" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Mobile Crane
-            </TabsTrigger>
-            <TabsTrigger value="submitted" className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Submitted ({submittedChecklists.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="new-inspection">
-            <Card className="bg-card border-border shadow-elevated">
-              <div className="p-6 text-center">
-                <h2 className="text-xl font-semibold text-foreground mb-4">Select Equipment Type</h2>
-                <p className="text-muted-foreground mb-6">Choose the type of equipment you want to inspect</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button
-                    onClick={() => setActiveTab("general")}
-                    className="h-24 text-lg"
-                  >
-                    General Heavy Equipment
-                  </Button>
-                  <Button
-                    onClick={() => setActiveTab("crane")}
-                    className="h-24 text-lg"
-                  >
-                    Mobile Crane
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="general">
-            {renderInspectionForm("general")}
-          </TabsContent>
-
-          <TabsContent value="crane">
-            {renderInspectionForm("crane")}
-          </TabsContent>
-
-          <TabsContent value="submitted">
-            <Card className="bg-card border-border shadow-elevated">
-              <div className="p-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <Calendar className="w-6 h-6 text-primary" />
-                  <h2 className="text-xl font-semibold text-foreground">
-                    Submitted Checklists ({submittedChecklists.length})
-                  </h2>
-                </div>
-                
-                {submittedChecklists.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Calendar className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <p className="text-muted-foreground text-lg">No submitted checklists yet</p>
-                    <p className="text-muted-foreground/70 text-sm mt-2">Complete an inspection to see it here</p>
-                  </div>
-                ) : (
-                  <ScrollArea className="h-96">
-                    <div className="space-y-4">
-                      {submittedChecklists.map((checklist) => (
-                        <div key={checklist.id} className="p-4 bg-muted/30 rounded-lg border border-border">
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <User className="w-4 h-4 text-industrial-blue" />
-                                <span className="font-medium text-industrial-white">{checklist.operatorName}</span>
-                                <span className="text-industrial-grey">({checklist.licenseNumber})</span>
-                              </div>
-                              <div className="text-sm text-industrial-grey space-y-1">
-                                <div>{checklist.equipmentType} - #{checklist.equipmentNumber}</div>
-                                <div className="flex items-center gap-2">
-                                  <span>Date: {checklist.date}</span>
-                                  <span>•</span>
-                                  <span>Type: {checklist.checklistType === "general" ? "General Equipment" : "Mobile Crane"}</span>
-                                </div>
-                                <div>Submitted: {new Date(checklist.submittedAt).toLocaleDateString()} at {new Date(checklist.submittedAt).toLocaleTimeString()}</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="text-center">
-                                <div className={`text-2xl font-bold ${checklist.score >= 80 ? 'text-industrial-green' : checklist.score >= 60 ? 'text-yellow-500' : 'text-destructive'}`}>
-                                  {checklist.score}%
-                                </div>
-                                <div className="text-xs text-industrial-grey">Score</div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-lg font-semibold text-industrial-green">{checklist.passedItems}</div>
-                                <div className="text-xs text-industrial-grey">Passed</div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-lg font-semibold text-destructive">{checklist.failedItems}</div>
-                                <div className="text-xs text-industrial-grey">Failed</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
-              </div>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  );
-
-  function renderInspectionForm(type: EquipmentType) {
-    const checklist = type === "general" ? generalChecklist : craneChecklistState;
-    const setChecklist = type === "general" ? setGeneralChecklist : setCraneChecklistState;
-    
-    const handleStatusChange = (categoryIndex: number, itemIndex: number, newStatus: CheckStatus) => {
-      const newChecklist = [...checklist];
-      newChecklist[categoryIndex].items[itemIndex].status = newStatus;
-      setChecklist(newChecklist);
-    };
-
-    const calculateScore = () => {
-      const totalItems = checklist.reduce((acc, category) => acc + category.items.length, 0);
-      const passedItems = checklist.reduce((acc, category) => 
-        acc + category.items.filter(item => item.status === "passed").length, 0
-      );
-      const failedItems = checklist.reduce((acc, category) => 
-        acc + category.items.filter(item => item.status === "failed").length, 0
-      );
-      const checkedItems = passedItems + failedItems;
-      const score = checkedItems > 0 ? Math.round((passedItems / checkedItems) * 100) : 0;
-      
-      return { totalItems, passedItems, failedItems, checkedItems, score };
-    };
+  const renderInspectionForm = (
+    checklist: ChecklistCategory[],
+    checklistType: 'general' | 'mobile_crane',
+    title: string
+  ) => {
+    const { score, passedItems, failedItems, totalItems } = calculateScore(checklist);
 
     return (
-
-      <Card className="bg-card border-border shadow-elevated">
-        <div className="p-6">
-          {/* Input Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+      <div className="space-y-6">
+        {/* Equipment Details Form */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Equipment Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="operator-name" className="text-industrial-white font-medium">
-                Operator Name:
-              </Label>
+              <Label htmlFor="operator">Operator Name *</Label>
               <Input
-                id="operator-name"
+                id="operator"
                 value={operatorName}
                 onChange={(e) => setOperatorName(e.target.value)}
-                className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
                 placeholder="Enter operator name"
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="license-number" className="text-industrial-white font-medium">
-                License Number:
-              </Label>
+              <Label htmlFor="license">License Number *</Label>
               <Input
-                id="license-number"
+                id="license"
                 value={licenseNumber}
                 onChange={(e) => setLicenseNumber(e.target.value)}
-                className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
                 placeholder="Enter license number"
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="equipment-type" className="text-industrial-white font-medium">
-                Equipment Type:
-              </Label>
+              <Label htmlFor="equipType">Equipment Type *</Label>
               <Input
-                id="equipment-type"
+                id="equipType"
                 value={equipmentType}
                 onChange={(e) => setEquipmentType(e.target.value)}
-                className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
                 placeholder="Enter equipment type"
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="equipment-number" className="text-industrial-white font-medium">
-                Equipment Number:
-              </Label>
+              <Label htmlFor="equipNumber">Equipment Number *</Label>
               <Input
-                id="equipment-number"
+                id="equipNumber"
                 value={equipmentNumber}
                 onChange={(e) => setEquipmentNumber(e.target.value)}
-                className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
                 placeholder="Enter equipment number"
+                required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="date" className="text-industrial-white font-medium">
-                Date:
-              </Label>
-              <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="bg-input border-border text-foreground focus:ring-industrial-blue focus:border-industrial-blue"
-              />
-            </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          {/* Equipment Score Dashboard */}
-          <div className="mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/20 rounded-lg border border-border">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-industrial-blue">{calculateScore().score}%</div>
-                <div className="text-sm text-industrial-grey">Equipment Score</div>
+        {/* Score Dashboard */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5" />
+              Inspection Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-primary">{score}%</div>
+                <div className="text-sm text-muted-foreground">Overall Score</div>
               </div>
-              <div className="text-center">
-                <div className="text-xl font-semibold text-industrial-green">{calculateScore().passedItems}</div>
-                <div className="text-sm text-industrial-grey">Passed</div>
+              <div>
+                <div className="text-2xl font-bold text-green-600">{passedItems}</div>
+                <div className="text-sm text-muted-foreground">Passed</div>
               </div>
-              <div className="text-center">
-                <div className="text-xl font-semibold text-destructive">{calculateScore().failedItems}</div>
-                <div className="text-sm text-industrial-grey">Failed</div>
+              <div>
+                <div className="text-2xl font-bold text-red-600">{failedItems}</div>
+                <div className="text-sm text-muted-foreground">Failed</div>
               </div>
-              <div className="text-center">
-                <div className="text-xl font-semibold text-industrial-white">{calculateScore().totalItems - calculateScore().checkedItems}</div>
-                <div className="text-sm text-industrial-grey">Remaining</div>
+              <div>
+                <div className="text-2xl font-bold">{totalItems}</div>
+                <div className="text-sm text-muted-foreground">Total Items</div>
               </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          {/* Inspection Checklist */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-industrial-white">
-                Inspection Checklist - {type === "general" ? "General Equipment" : "Mobile Crane"}
-              </h2>
-              <div className="flex items-center gap-6 text-sm text-industrial-grey">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded border-2 border-industrial-green bg-industrial-green flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
-                  <span>Pass</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded border-2 border-destructive bg-destructive flex items-center justify-center">
-                    <X className="w-3 h-3 text-white" />
-                  </div>
-                  <span>Fail</span>
-                </div>
-              </div>
-            </div>
-            
-            <ScrollArea className="h-96 pr-4">
-              <div className="space-y-6">
-                {checklist.map((category, categoryIndex) => (
-                  <div key={category.title} className="space-y-3">
-                    <h3 className="text-industrial-white font-semibold text-sm uppercase tracking-wider">
-                      {category.title}
-                    </h3>
-                     <div className="space-y-2">
-                       {category.items.map((item, itemIndex) => (
-                         <div key={item.id} className="flex items-center gap-4 py-3 px-4 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
-                           <div className="flex-shrink-0">
-                             {item.imageUrl ? (
-                               <img
-                                 src={item.imageUrl}
-                                 alt={item.text}
-                                 className="h-12 w-12 object-cover rounded border"
-                               />
-                             ) : (
-                               <DefaultEquipmentImage
-                                 category={category.title}
-                                 itemText={item.text}
-                                 className="h-12 w-12"
-                               />
-                             )}
-                           </div>
-                           <div className="flex-1">
-                             <span className="text-industrial-grey">
-                               {item.text}
-                             </span>
-                           </div>
-                           <div className="flex items-center gap-2">
-                             <ImageUpload
-                               onImageUpload={(imageUrl) => {
-                                 const newChecklist = [...checklist];
-                                 newChecklist[categoryIndex].items[itemIndex].imageUrl = imageUrl;
-                                 setChecklist(newChecklist);
-                               }}
-                               currentImageUrl={item.imageUrl}
-                               itemId={`${type}-${category.title}-${item.id}`}
-                             />
-                           </div>
-                           <div className="flex items-center gap-3">
-                             <CheckboxButton
-                               status={item.status}
-                               onClick={() => handleStatusChange(categoryIndex, itemIndex, 
-                                 item.status === "passed" ? "unchecked" : "passed"
-                               )}
-                               type="pass"
-                             />
-                             <CheckboxButton
-                               status={item.status}
-                               onClick={() => handleStatusChange(categoryIndex, itemIndex, 
-                                 item.status === "failed" ? "unchecked" : "failed"
-                               )}
-                               type="fail"
-                             />
-                           </div>
-                         </div>
-                       ))}
+        {/* Checklist Items */}
+        <div className="space-y-4">
+          {checklist.map((category, categoryIndex) => (
+            <Card key={category.title}>
+              <CardHeader>
+                <CardTitle className="text-lg">{category.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {category.items.map((item, itemIndex) => (
+                  <div key={item.id} className="flex flex-col space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="flex-1 text-sm">{item.text}</span>
+                      <CheckboxButton
+                        status={item.status}
+                        onStatusChange={(newStatus) =>
+                          handleStatusChange(categoryIndex, itemIndex, newStatus, checklistType === 'mobile_crane' ? 'crane' : 'general')
+                        }
+                      />
                     </div>
+                    <ImageUpload
+                      currentImageUrl={item.imageUrl}
+                      onImageUpload={(imageUrl) =>
+                        handleImageUpload(categoryIndex, itemIndex, imageUrl, checklistType === 'mobile_crane' ? 'crane' : 'general')
+                      }
+                      itemId={item.id}
+                    />
                   </div>
                 ))}
-              </div>
-            </ScrollArea>
-          </div>
-
-          {/* Submit Button */}
-          <div className="flex justify-center">
-            <Button
-              onClick={() => {
-                // Set the activeTab to match the current form type
-                setActiveTab(type);
-                handleSubmit();
-              }}
-              disabled={isLoading}
-              className="bg-industrial-green hover:bg-industrial-green/90 text-white font-semibold py-3 px-8 text-lg shadow-elevated disabled:opacity-50"
-              size="lg"
-            >
-              {isLoading ? "SUBMITTING..." : "SUBMIT REPORT"}
-            </Button>
-          </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </Card>
+
+        {/* Submit Button */}
+        <Button
+          onClick={() => handleSubmit(checklistType)}
+          className="w-full"
+          size="lg"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Submitting Report...
+            </>
+          ) : (
+            `Submit ${title} Report`
+          )}
+        </Button>
+      </div>
+    );
+  };
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Authentication Required</h2>
+          <p className="text-muted-foreground">Please log in to access the equipment checklist.</p>
+        </div>
+      </div>
     );
   }
-}
+
+  return (
+    <div className="container mx-auto p-6 max-w-4xl">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">Equipment Inspection Checklist</h1>
+        <p className="text-muted-foreground">
+          Complete daily equipment inspections and track maintenance requirements
+        </p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="new">New Inspection</TabsTrigger>
+          <TabsTrigger value="general">General Equipment</TabsTrigger>
+          <TabsTrigger value="crane">Mobile Crane</TabsTrigger>
+          <TabsTrigger value="submitted">Submitted</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="new" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Start New Inspection</CardTitle>
+              <CardDescription>
+                Choose the type of equipment inspection you want to perform.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setActiveTab("general")}
+                className="h-24 flex flex-col items-center justify-center space-y-2"
+              >
+                <FileText className="h-6 w-6" />
+                <span>General Equipment</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setActiveTab("crane")}
+                className="h-24 flex flex-col items-center justify-center space-y-2"
+              >
+                <FileText className="h-6 w-6" />
+                <span>Mobile Crane</span>
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="general">
+          {renderInspectionForm(generalChecklist, 'general', 'General Equipment')}
+        </TabsContent>
+
+        <TabsContent value="crane">
+          {renderInspectionForm(craneChecklistState, 'mobile_crane', 'Mobile Crane')}
+        </TabsContent>
+
+        <TabsContent value="submitted">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Submitted Checklists
+              </CardTitle>
+              <CardDescription>
+                View your recent equipment inspection reports
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-96">
+                {submittedChecklists.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No submitted checklists found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {submittedChecklists.map((checklist) => (
+                      <Card key={checklist.id} className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            <span className="font-medium">{checklist.operator_name}</span>
+                          </div>
+                          <Badge variant={checklist.score >= 80 ? "default" : "destructive"}>
+                            {checklist.score}%
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-muted-foreground">
+                          <div>Date: {new Date(checklist.inspection_date).toLocaleDateString()}</div>
+                          <div>Type: {checklist.checklist_type.replace('_', ' ')}</div>
+                          <div>Equipment: {checklist.equipment_number}</div>
+                          <div>License: {checklist.license_number}</div>
+                        </div>
+                        <Separator className="my-2" />
+                        <div className="flex justify-between text-sm">
+                          <span>Passed: {checklist.passed_items}/{checklist.total_items}</span>
+                          <span>Failed: {checklist.failed_items}/{checklist.total_items}</span>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default EquipmentChecklist;
