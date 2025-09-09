@@ -42,10 +42,14 @@ const Auth = () => {
         description: "You have been successfully signed in.",
       });
     } catch (error: any) {
-      setError(error.message);
+      const errorMessage = error.message === 'Failed to fetch' 
+        ? 'Connection error. Please check your Supabase configuration and try again.'
+        : error.message;
+      
+      setError(errorMessage);
       toast({
         title: "Sign in failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -74,10 +78,14 @@ const Auth = () => {
         description: "Please check your email to confirm your account.",
       });
     } catch (error: any) {
-      setError(error.message);
+      const errorMessage = error.message === 'Failed to fetch'
+        ? 'Connection error. Please configure your Supabase URL settings and try again.'
+        : error.message;
+      
+      setError(errorMessage);
       toast({
         title: "Sign up failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
